@@ -4,25 +4,34 @@ pipeline {
     parameters {
         choice(
             name: 'TARGET',
-            choices: ['frontend', 'my-project'],
-            description: 'Deployment target'
+            choices: [
+                'frontend',
+                'my-project'
+            ],
+            description: 'Select the deployment target'
         )
     }
 
     stages {
+
         stage('Resolve Target Configuration') {
             steps {
                 script {
+                    // SSH login user (ALWAYS a login user)
+                    env.TARGET_USER = 'apache'
+
                     if (params.TARGET == 'frontend') {
                         env.TARGET_HOST = '172.31.43.5'
                         env.APP_PATH   = '/var/web-laravel/frontend'
-                        env.ENV_FILE   = '.env'
+                        env.ENV_FILE   = '.env.frontend'
+
                     } else if (params.TARGET == 'my-project') {
                         env.TARGET_HOST = '172.31.43.5'
                         env.APP_PATH   = '/var/web-laravel/my-project'
-                        env.ENV_FILE   = '.env'
+                        env.ENV_FILE   = '.env.my-project'
+
                     } else {
-                        error "Unknown TARGET: ${params.TARGET}"
+                        error "❌ Unknown TARGET: ${params.TARGET}"
                     }
                 }
             }
@@ -33,21 +42,30 @@ pipeline {
                 sh '''
                   set -e
 
-                  TARGET_USER=apache
+                  echo "===================================="
+                  echo ">>> Deploying TARGET : ${TARGET}"
+                  echo ">>> SSH User         : ${TARGET_USER}"
+                  echo ">>> Host             : ${TARGET_HOST}"
+                  echo ">>> App Path         : ${APP_PATH}"
+                  echo ">>> Env File         : ${ENV_FILE}"
+                  echo "===================================="
 
-                  echo ">>> Deploying to: ${TARGET}"
-                  echo ">>> Host: ${TARGET_HOST}"
-                  echo ">>> App path: ${APP_PATH}"
+                  # Safety check
+                  if [ ! -f "${ENV_FILE}" ]; then
+                    echo "❌ Env file not found: ${ENV_FILE}"
+                    exit 1
+                  fi
 
-                  echo ">>> Syncing env file"
+                  echo ">>> Syncing .env file as apache"
                   rsync -avz \
                     --rsync-path="sudo -u apache rsync" \
                     "${ENV_FILE}" \
                     ${TARGET_USER}@${TARGET_HOST}:${APP_PATH}/.env
 
-                  echo ">>> Setting permissions"
-                  ssh ${TARGET_USER}@${TARGET_HOST} \
-                    "sudo -u apache chmod 600 ${APP_PATH}/.env"
+                  echo ">>> Fixing permissions"
+                  ssh ${TARGET_USER}@${TARGET_HOST} "
+                    sudo -u apache chmod 600 ${APP_PATH}/.env
+                  "
 
                   echo ">>> Reloading Laravel config"
                   ssh ${TARGET_USER}@${TARGET_HOST} "
@@ -56,9 +74,18 @@ pipeline {
                     sudo -u apache php artisan config:cache
                   "
 
-                  echo ">>> DONE"
+                  echo ">>> Deployment completed successfully"
                 '''
             }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ SUCCESS: Deployment completed for ${TARGET}"
+        }
+        failure {
+            echo "❌ FAILURE: Deployment failed for ${TARGET}"
         }
     }
 }
