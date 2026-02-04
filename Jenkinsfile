@@ -4,29 +4,26 @@ pipeline {
     parameters {
         choice(
             name: 'TARGET',
-            choices: [
-                'frontend',
-                'my-project'
-            ],
-            description: 'Select the deployment target'
+            choices: ['frontend', 'my-project'],
+            description: 'Select deployment target'
         )
     }
 
     stages {
 
-        stage('Resolve Target Configuration') {
+        stage('Resolve Configuration') {
             steps {
                 script {
                     // SSH login user (ALWAYS a login user)
-                    env.TARGET_USER = 'apache'
+                    env.TARGET_USER = 'deploy'
 
                     if (params.TARGET == 'frontend') {
-                        env.TARGET_HOST = '172.31.43.5'
+                        env.TARGET_HOST = '63.176.166.228'
                         env.APP_PATH   = '/var/web-laravel/frontend'
                         env.ENV_FILE   = '.env.frontend'
 
                     } else if (params.TARGET == 'my-project') {
-                        env.TARGET_HOST = '172.31.43.5'
+                        env.TARGET_HOST = '63.176.166.228'
                         env.APP_PATH   = '/var/web-laravel/my-project'
                         env.ENV_FILE   = '.env.my-project'
 
@@ -37,7 +34,7 @@ pipeline {
             }
         }
 
-        stage('Sync Laravel Env & Reload Config') {
+        stage('Deploy Env & Reload Config') {
             steps {
                 sh '''
                   set -e
@@ -56,7 +53,7 @@ pipeline {
                     exit 1
                   fi
 
-                  echo ">>> Syncing .env file as apache"
+                  echo ">>> Syncing .env as apache"
                   rsync -avz \
                     --rsync-path="sudo -u apache rsync" \
                     "${ENV_FILE}" \
@@ -74,7 +71,7 @@ pipeline {
                     sudo -u apache php artisan config:cache
                   "
 
-                  echo ">>> Deployment completed successfully"
+                  echo ">>> DEPLOYMENT COMPLETED"
                 '''
             }
         }
