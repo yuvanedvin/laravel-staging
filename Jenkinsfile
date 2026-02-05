@@ -4,7 +4,7 @@ pipeline {
     parameters {
         choice(
             name: 'TARGET',
-            choices: ['frontend', 'my-project'],
+            choices: ['my-project', 'frontend2'],
             description: 'Select deployment target'
         )
     }
@@ -17,15 +17,15 @@ pipeline {
                     // SSH login user (ALWAYS a login user)
                     env.TARGET_USER = 'deploy'
 
-                    if (params.TARGET == 'frontend') {
-                        env.TARGET_HOST = '63.176.166.228'
-                        env.APP_PATH   = '/var/web-laravel/frontend'
-                        env.ENV_FILE   = '.env.frontend'
-
-                    } else if (params.TARGET == 'my-project') {
-                        env.TARGET_HOST = '63.176.166.228'
+                    if (params.TARGET == 'my-project') {
+                        env.TARGET_HOST = '3.69.167.61'
                         env.APP_PATH   = '/var/web-laravel/my-project'
                         env.ENV_FILE   = '.env.my-project'
+
+                    } else if (params.TARGET == 'frontend2') {
+                        env.TARGET_HOST = '3.69.167.61'
+                        env.APP_PATH   = '/var/web-laravel/frontend2'
+                        env.ENV_FILE   = '.env.frontend2'
 
                     } else {
                         error "❌ Unknown TARGET: ${params.TARGET}"
